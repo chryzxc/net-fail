@@ -1,4 +1,4 @@
-# Net Trace
+# Net Fail
 
 A Chrome/Edge Manifest V3 browser extension that captures and displays failed network requests.
 
@@ -29,7 +29,7 @@ Then load the `dist/` folder as an unpacked extension:
 ## Project Structure
 
 ```
-net-trace/
+net-Fail/
 ├── public/
 │   └── manifest.json      # Extension manifest
 ├── src/
