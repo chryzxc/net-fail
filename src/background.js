@@ -29,6 +29,7 @@ async function updateBadgeCount(count) {
 async function initializeBadge() {
     try {
         const { failedRequests = [] } = await chrome.storage.local.get('failedRequests');
+        console.log('Net Trace: Initializing badge with count:', failedRequests.length);
         updateBadgeCount(failedRequests.length);
     } catch (error) {
         console.error('Net Trace: Error initializing badge:', error);
