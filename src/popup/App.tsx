@@ -1,15 +1,27 @@
 import React, { useEffect, useState } from "react";
 
+interface FailedRequest {
+  id: string;
+  url: string;
+  method?: string;
+  statusCode?: number | null;
+  error?: string;
+  timestamp: number;
+  type?: string;
+  requestHeaders?: Record<string, any>;
+  response?: any;
+}
+
 function isChromeRuntimeAvailable() {
   return (
     typeof chrome !== "undefined" &&
-    chrome.runtime &&
-    chrome.runtime.sendMessage
+    (chrome as any).runtime &&
+    (chrome as any).runtime.sendMessage
   );
 }
 
-export default function App() {
-  const [requests, setRequests] = useState([]);
+export default function App(): JSX.Element {
+  const [requests, setRequests] = useState<FailedRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch failed requests from the background service worker
@@ -24,9 +36,9 @@ export default function App() {
     }
 
     setLoading(true);
-    chrome.runtime.sendMessage({ action: "getFailedRequests" }, (response) => {
+    (chrome as any).runtime.sendMessage({ action: "getFailedRequests" }, (response: { failedRequests?: FailedRequest[] }) => {
       const filteredRequests = (response?.failedRequests || []).filter(
-        (req) => req && req.url && req.url.includes("iboardliving.com")
+        (req) => req && req.url
       );
       console.log("Fetched failed requests:", filteredRequests);
       setRequests(filteredRequests);
@@ -38,7 +50,7 @@ export default function App() {
   const clearAll = async () => {
     if (!isChromeRuntimeAvailable()) return;
     if (!confirm("Clear all captured failed requests?")) return;
-    chrome.runtime.sendMessage({ action: "clearFailedRequests" }, (res) => {
+    (chrome as any).runtime.sendMessage({ action: "clearFailedRequests" }, (res: { success?: boolean }) => {
       if (res?.success) setRequests([]);
     });
   };
@@ -47,27 +59,19 @@ export default function App() {
     fetchFailedRequests();
 
     // Listen for storage changes so UI updates live when background stores new items
-    function onStorageChanged(changes, area) {
+    function onStorageChanged(changes: any, area: string) {
       if (area === "local" && changes.failedRequests) {
         setRequests(changes.failedRequests.newValue || []);
       }
     }
 
-    if (
-      typeof chrome !== "undefined" &&
-      chrome.storage &&
-      chrome.storage.onChanged
-    ) {
-      chrome.storage.onChanged.addListener(onStorageChanged);
+    if (typeof chrome !== "undefined" && (chrome as any).storage && (chrome as any).storage.onChanged) {
+      (chrome as any).storage.onChanged.addListener(onStorageChanged);
     }
 
     return () => {
-      if (
-        typeof chrome !== "undefined" &&
-        chrome.storage &&
-        chrome.storage.onChanged
-      ) {
-        chrome.storage.onChanged.removeListener(onStorageChanged);
+      if (typeof chrome !== "undefined" && (chrome as any).storage && (chrome as any).storage.onChanged) {
+        (chrome as any).storage.onChanged.removeListener(onStorageChanged);
       }
     };
   }, []);
