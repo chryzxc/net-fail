@@ -1,4 +1,4 @@
-// Net Trace - Background Service Worker
+// Net Fail - Background Service Worker
 // Captures failed network requests (HTTP 4xx/5xx and browser-level errors)
 
 const MAX_STORED_REQUESTS = 500;
@@ -14,7 +14,7 @@ async function storeFailedRequest(requestData) {
         await chrome.storage.local.set({ failedRequests });
         updateBadgeCount(failedRequests.length);
     } catch (error) {
-        console.error('Net Trace: Error storing failed request:', error);
+        console.error('Net Fail: Error storing failed request:', error);
     }
 }
 
@@ -29,10 +29,10 @@ async function updateBadgeCount(count) {
 async function initializeBadge() {
     try {
         const { failedRequests = [] } = await chrome.storage.local.get('failedRequests');
-        console.log('Net Trace: Initializing badge with count:', failedRequests.length);
+        console.log('Net Fail: Initializing badge with count:', failedRequests.length);
         updateBadgeCount(failedRequests.length);
     } catch (error) {
-        console.error('Net Trace: Error initializing badge:', error);
+        console.error('Net Fail: Error initializing badge:', error);
     }
 }
 

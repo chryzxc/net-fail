@@ -75,7 +75,7 @@ export default function App() {
   return (
     <div className="w-[420px] min-h-[320px] bg-gray-50 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-purple-600">🔍 Net Trace</h1>
+        <h1 className="text-lg font-bold text-purple-600">🔍 Net Fail</h1>
         <div className="flex items-center gap-2">
           <button
             onClick={fetchFailedRequests}

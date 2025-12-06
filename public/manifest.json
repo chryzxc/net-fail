@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Net Trace",
+  "name": "Net Fail",
   "version": "1.0.0",
   "description": "Captures, stores, and displays failed network requests",
   "permissions": ["webRequest", "storage", "tabs"],
@@ -10,6 +10,6 @@
   },
   "action": {
     "default_popup": "src/popup/index.html",
-    "default_title": "Net Trace - Failed Requests"
+    "default_title": "Net Fail - Failed Requests"
   }
 }
