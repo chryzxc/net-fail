@@ -36,23 +36,29 @@ export default function App(): JSX.Element {
     }
 
     setLoading(true);
-    (chrome as any).runtime.sendMessage({ action: "getFailedRequests" }, (response: { failedRequests?: FailedRequest[] }) => {
-      const filteredRequests = (response?.failedRequests || []).filter(
-        (req) => req && req.url
-      );
-      console.log("Fetched failed requests:", filteredRequests);
-      setRequests(filteredRequests);
-      setLoading(false);
-    });
+    (chrome as any).runtime.sendMessage(
+      { action: "getFailedRequests" },
+      (response: { failedRequests?: FailedRequest[] }) => {
+        const filteredRequests = (response?.failedRequests || []).filter(
+          (req) => req && req.url
+        );
+        console.log("Fetched failed requests:", filteredRequests);
+        setRequests(filteredRequests);
+        setLoading(false);
+      }
+    );
   };
 
   // Clear all failed requests
   const clearAll = async () => {
     if (!isChromeRuntimeAvailable()) return;
     if (!confirm("Clear all captured failed requests?")) return;
-    (chrome as any).runtime.sendMessage({ action: "clearFailedRequests" }, (res: { success?: boolean }) => {
-      if (res?.success) setRequests([]);
-    });
+    (chrome as any).runtime.sendMessage(
+      { action: "clearFailedRequests" },
+      (res: { success?: boolean }) => {
+        if (res?.success) setRequests([]);
+      }
+    );
   };
 
   useEffect(() => {
@@ -65,12 +71,20 @@ export default function App(): JSX.Element {
       }
     }
 
-    if (typeof chrome !== "undefined" && (chrome as any).storage && (chrome as any).storage.onChanged) {
+    if (
+      typeof chrome !== "undefined" &&
+      (chrome as any).storage &&
+      (chrome as any).storage.onChanged
+    ) {
       (chrome as any).storage.onChanged.addListener(onStorageChanged);
     }
 
     return () => {
-      if (typeof chrome !== "undefined" && (chrome as any).storage && (chrome as any).storage.onChanged) {
+      if (
+        typeof chrome !== "undefined" &&
+        (chrome as any).storage &&
+        (chrome as any).storage.onChanged
+      ) {
         (chrome as any).storage.onChanged.removeListener(onStorageChanged);
       }
     };

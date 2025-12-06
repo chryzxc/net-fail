@@ -12,7 +12,7 @@ export default defineConfig({
                 // Copy manifest.json to dist
                 try {
                     copyFileSync('public/manifest.json', 'dist/manifest.json');
-                } catch (err) {}
+                } catch (err) { }
 
                 // Copy built background from assets to root for manifest
                 try {
@@ -21,7 +21,7 @@ export default defineConfig({
                     // Fallback to source if build didn't produce it yet
                     try {
                         copyFileSync('src/background.js', 'dist/background.js');
-                    } catch (e) {}
+                    } catch (e) { }
                 }
             },
         },

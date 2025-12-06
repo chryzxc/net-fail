@@ -16,7 +16,7 @@ type StoredFailedRequest = {
 // Store a failed request
 async function storeFailedRequest(requestData: StoredFailedRequest) {
   try {
-    const result = await chrome.storage.local.get('failedRequests');
+    const result = await chrome.storage.local.get("failedRequests");
     const failedRequests: StoredFailedRequest[] = result.failedRequests || [];
     failedRequests.unshift(requestData);
     if (failedRequests.length > MAX_STORED_REQUESTS) {
@@ -25,25 +25,30 @@ async function storeFailedRequest(requestData: StoredFailedRequest) {
     await chrome.storage.local.set({ failedRequests });
     updateBadgeCount(failedRequests.length);
   } catch (error) {
-    console.error('Net Fail: Error storing failed request:', error);
+    console.error("Net Fail: Error storing failed request:", error);
   }
 }
 
 // Update the extension badge
 async function updateBadgeCount(count: number) {
-  const text = count > 0 ? (count > 99 ? '99+' : String(count)) : '';
+  const text = count > 0 ? (count > 99 ? "99+" : String(count)) : "";
   await chrome.action.setBadgeText({ text });
-  await chrome.action.setBadgeBackgroundColor({ color: '#e74c3c' });
+  await chrome.action.setBadgeBackgroundColor({ color: "#e74c3c" });
 }
 
 // Initialize badge on startup
 async function initializeBadge() {
   try {
-    const { failedRequests = [] } = await chrome.storage.local.get('failedRequests');
-    console.log('Net Fail: Initializing badge with count:', failedRequests.length);
+    const { failedRequests = [] } = await chrome.storage.local.get(
+      "failedRequests"
+    );
+    console.log(
+      "Net Fail: Initializing badge with count:",
+      failedRequests.length
+    );
     updateBadgeCount(failedRequests.length);
   } catch (error) {
-    console.error('Net Fail: Error initializing badge:', error);
+    console.error("Net Fail: Error initializing badge:", error);
   }
 }
 
@@ -54,7 +59,7 @@ chrome.webRequest.onCompleted.addListener(
       await storeFailedRequest({
         id: `${details.requestId}-${Date.now()}`,
         url: details.url,
-        method: details.method || 'GET',
+        method: details.method || "GET",
         statusCode: details.statusCode,
         error: `HTTP ${details.statusCode}`,
         timestamp: Date.now(),
@@ -62,7 +67,7 @@ chrome.webRequest.onCompleted.addListener(
       });
     }
   },
-  { urls: ['<all_urls>'] }
+  { urls: ["<all_urls>"] }
 );
 
 // Listen for network errors
@@ -71,25 +76,27 @@ chrome.webRequest.onErrorOccurred.addListener(
     await storeFailedRequest({
       id: `${details.requestId}-${Date.now()}`,
       url: details.url,
-      method: details.method || 'GET',
+      method: details.method || "GET",
       statusCode: null,
       error: details.error,
       timestamp: Date.now(),
       type: details.type,
     });
   },
-  { urls: ['<all_urls>'] }
+  { urls: ["<all_urls>"] }
 );
 
 // Message handler for popup
 chrome.runtime.onMessage.addListener((request: any, _sender, sendResponse) => {
-  if (request.action === 'getFailedRequests') {
-    chrome.storage.local.get('failedRequests').then(({ failedRequests = [] }) => {
-      sendResponse({ failedRequests });
-    });
+  if (request.action === "getFailedRequests") {
+    chrome.storage.local
+      .get("failedRequests")
+      .then(({ failedRequests = [] }) => {
+        sendResponse({ failedRequests });
+      });
     return true;
   }
-  if (request.action === 'clearFailedRequests') {
+  if (request.action === "clearFailedRequests") {
     chrome.storage.local.set({ failedRequests: [] }).then(() => {
       updateBadgeCount(0);
       sendResponse({ success: true });
