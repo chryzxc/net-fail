@@ -3,7 +3,7 @@
 
 const MAX_STORED_REQUESTS = 500;
 
-type StoredFailedRequest = {
+type TStoredFailedRequest = {
   id: string;
   url: string;
   method?: string;
@@ -11,13 +11,86 @@ type StoredFailedRequest = {
   error?: string;
   timestamp: number;
   type?: string;
+  // requestHeaders captured from onBeforeSendHeaders
+  requestHeaders?: any[];
+  // responseHeaders captured from onHeadersReceived
+  responseHeaders?: any[];
 };
 
+type HeaderCacheEntry = {
+  requestHeaders?: any[];
+  responseHeaders?: any[];
+};
+
+const headerCache = new Map<string, HeaderCacheEntry>();
+const PENDING_HEADERS_KEY = "pendingRequestHeaders";
+
+async function readPendingHeaders(): Promise<Record<string, HeaderCacheEntry>> {
+  const data = await chrome.storage.local.get(PENDING_HEADERS_KEY);
+  return (data[PENDING_HEADERS_KEY] as Record<string, HeaderCacheEntry>) || {};
+}
+
+async function writePendingHeaders(pending: Record<string, HeaderCacheEntry>) {
+  await chrome.storage.local.set({ [PENDING_HEADERS_KEY]: pending });
+}
+
+async function updatePendingHeaders(
+  requestId: string,
+  patch: HeaderCacheEntry
+): Promise<HeaderCacheEntry> {
+  const pending = await readPendingHeaders();
+  const existing = { ...(pending[requestId] || {}), ...patch };
+  pending[requestId] = existing;
+  headerCache.set(requestId, existing);
+  await writePendingHeaders(pending);
+  return existing;
+}
+
+async function consumePendingHeaders(
+  requestId: string
+): Promise<HeaderCacheEntry> {
+  const pending = await readPendingHeaders();
+  const stored = pending[requestId];
+  if (stored) {
+    delete pending[requestId];
+    await writePendingHeaders(pending);
+  }
+  const cached = headerCache.get(requestId);
+  headerCache.delete(requestId);
+  return { ...(stored || {}), ...(cached || {}) };
+}
+
+// Capture outgoing request headers when available
+chrome.webRequest.onBeforeSendHeaders.addListener(
+  (details: any) => {
+    updatePendingHeaders(details.requestId, {
+      requestHeaders: details.requestHeaders || [],
+    }).catch((err) =>
+      console.error("Net Fail: Error caching request headers:", err)
+    );
+  },
+  { urls: ["<all_urls>"] },
+  ["requestHeaders", "extraHeaders"]
+);
+
+// Capture response headers when available
+chrome.webRequest.onHeadersReceived.addListener(
+  (details: any) => {
+    updatePendingHeaders(details.requestId, {
+      responseHeaders: details.responseHeaders || [],
+    }).catch((err) =>
+      console.error("Net Fail: Error caching response headers:", err)
+    );
+  },
+  { urls: ["<all_urls>"] },
+  ["responseHeaders", "extraHeaders"]
+);
+
 // Store a failed request
-async function storeFailedRequest(requestData: StoredFailedRequest) {
+async function storeFailedRequest(requestData: TStoredFailedRequest) {
   try {
     const result = await chrome.storage.local.get("failedRequests");
-    const failedRequests: StoredFailedRequest[] = result.failedRequests || [];
+    const failedRequests: TStoredFailedRequest[] = result.failedRequests || [];
     failedRequests.unshift(requestData);
     if (failedRequests.length > MAX_STORED_REQUESTS) {
       failedRequests.length = MAX_STORED_REQUESTS;
@@ -56,6 +129,7 @@ async function initializeBadge() {
 chrome.webRequest.onCompleted.addListener(
   async (details: any) => {
     if (details.statusCode >= 400) {
+      const cached = await consumePendingHeaders(details.requestId);
       await storeFailedRequest({
         id: `${details.requestId}-${Date.now()}`,
         url: details.url,
@@ -64,6 +138,8 @@ chrome.webRequest.onCompleted.addListener(
         error: `HTTP ${details.statusCode}`,
         timestamp: Date.now(),
         type: details.type,
+        requestHeaders: cached.requestHeaders,
+        responseHeaders: cached.responseHeaders,
       });
     }
   },
@@ -73,6 +149,7 @@ chrome.webRequest.onCompleted.addListener(
 // Listen for network errors
 chrome.webRequest.onErrorOccurred.addListener(
   async (details: any) => {
+    const cached = await consumePendingHeaders(details.requestId);
     await storeFailedRequest({
       id: `${details.requestId}-${Date.now()}`,
       url: details.url,
@@ -81,6 +158,8 @@ chrome.webRequest.onErrorOccurred.addListener(
       error: details.error,
       timestamp: Date.now(),
       type: details.type,
+      requestHeaders: cached.requestHeaders,
+      responseHeaders: cached.responseHeaders,
     });
   },
   { urls: ["<all_urls>"] }
