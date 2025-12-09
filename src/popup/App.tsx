@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import IconButton from "@/components/ui/icon-button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePersistedUrl } from "@/lib/usePersistedUrl";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface IFailedRequest {
   id: string;
@@ -25,7 +25,7 @@ function isChromeRuntimeAvailable() {
 }
 
 export default function App(): JSX.Element {
-  const [url, setUrl] = useState<string>("");
+  const { url, setUrl, clear } = usePersistedUrl("");
   const [requests, setRequests] = useState<IFailedRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -185,7 +185,7 @@ export default function App(): JSX.Element {
   return (
     <div className="w-[500px] min-h-[400px] bg-gray-50 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-purple-600">🔍 Net Fail</h1>
+        <h1 className="text-lg font-bold text-purple-600">Net Fail</h1>
         <div className="flex items-center gap-2">
           <Button onClick={fetchFailedRequests} variant="outline">
             Refresh
@@ -200,7 +200,39 @@ export default function App(): JSX.Element {
         Shows failed HTTP/network requests captured by the background worker.
       </p>
 
-      <Tabs defaultValue="requests" className="mt-4 w-full">
+      <div className="relative mt-4">
+        <Input
+          value={url}
+          onChange={(e) => setUrl((e.target as HTMLInputElement).value)}
+          placeholder="Target URL"
+          aria-label="Target URL"
+          className="w-full pr-10"
+        />
+        {url && (
+          <button
+            onClick={() => setUrl("")}
+            className="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-500 hover:text-gray-700"
+            aria-label="Clear URL"
+          >
+            <svg
+              className="h-4 w-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      <Tabs defaultValue="requests" className="mt-2 w-full">
         <TabsList className="grid w-full grid-cols-2 rounded-lg border bg-white p-1">
           <TabsTrigger value="requests">Requests</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
@@ -214,31 +246,34 @@ export default function App(): JSX.Element {
                 No failed requests captured
               </div>
             ) : (
-              <ul className="space-y-2 max-h-[320px] overflow-auto pr-2">
-                {requests.map((r) => (
-                  <li
-                    key={r.id}
-                    className="p-2 bg-white border rounded-lg shadow-sm"
-                  >
-                    <div className="flex flex-row justify-between text-xs text-gray-500 mb-2">
-                      <div>{r.method}</div>
-                      <div className="text-[11px]">
-                        {new Date(r.timestamp).toLocaleString()}
+              <div>
+                <div className="mt-3"></div>
+                <ul className="space-y-2 max-h-[320px] overflow-auto pr-2 mt-4">
+                  {requests.map((r) => (
+                    <li
+                      key={r.id}
+                      className="p-2 bg-white border rounded-lg shadow-sm"
+                    >
+                      <div className="flex flex-row justify-between text-xs text-gray-500 mb-2">
+                        <div>{r.method}</div>
+                        <div className="text-[11px]">
+                          {new Date(r.timestamp).toLocaleString()}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="text-xs font-mono text-gray-700 break-all">
-                      {r.url}
-                    </div>
-                    {r.error && (
-                      <p className="text-xs mt-2 text-red-600">{r.error}</p>
-                    )}
-                    <p className="text-orange-500">
-                      Similar requests: {getSimilarRequests(r).length}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+                      <div className="text-xs font-mono text-gray-700 break-all">
+                        {r.url}
+                      </div>
+                      {r.error && (
+                        <p className="text-xs mt-2 text-red-600">{r.error}</p>
+                      )}
+                      <p className="text-orange-500">
+                        Similar requests: {getSimilarRequests(r).length}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         </TabsContent>
@@ -252,44 +287,30 @@ export default function App(): JSX.Element {
                     {insights.totalRequests} captures · grouped by URL
                   </p>
                 </div>
-                <IconButton
-                  className="bg-gray-100"
-                  aria-label="Refresh insights"
-                  onClick={fetchFailedRequests}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    className="h-4 w-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.886 1A9 9 0 105.399 5.868m0 0L5 10"
-                    />
-                  </svg>
-                </IconButton>
               </div>
               <div className="mt-4 space-y-3">
                 {insights.topUrls.map(([label, count]) => {
                   const maxCount = insights.topUrls[0]?.[1] || 1;
                   return (
-                    <div key={label} className="flex items-center gap-3">
-                      <span className="w-32 text-xs font-medium text-gray-600 truncate">
-                        {label}
-                      </span>
+                    <div>
+                      <div
+                        key={label}
+                        className="flex justify-between mb-1 gap-12"
+                      >
+                        <span className="text-xs font-medium text-gray-600 truncate">
+                          {label}
+                        </span>
+
+                        <span className="text-xs font-semibold text-gray-700">
+                          {count}
+                        </span>
+                      </div>
                       <div className="relative flex-1 h-2 rounded-full bg-gray-100">
                         <div
                           className="absolute inset-y-0 left-0 rounded-full bg-purple-500"
                           style={{ width: `${(count / maxCount) * 100}%` }}
                         />
                       </div>
-                      <span className="text-xs font-semibold text-gray-700">
-                        {count}
-                      </span>
                     </div>
                   );
                 })}
@@ -368,89 +389,6 @@ export default function App(): JSX.Element {
           </div>
         </TabsContent>
       </Tabs>
-      <div className="mt-3">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg
-              className="h-4 w-4 text-gray-400"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1012.5 20.5a7.5 7.5 0 004.15-3.85z"
-              />
-            </svg>
-          </div>
-          <Input
-            value={url}
-            onChange={(e) => setUrl((e.target as HTMLInputElement).value)}
-            placeholder="Filter by URL"
-            aria-label="Filter failed requests by URL"
-            className="w-full pl-9 pr-10"
-          />
-          {url && (
-            <button
-              onClick={() => setUrl("")}
-              className="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-500 hover:text-gray-700"
-              aria-label="Clear URL filter"
-            >
-              <svg
-                className="h-4 w-4"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* <div className="mt-4">
-        {loading ? (
-          <div className="text-sm text-gray-500">Loading…</div>
-        ) : requests.length === 0 ? (
-          <div className="text-sm text-gray-500">
-            No failed requests captured
-          </div>
-        ) : (
-          <ul className="space-y-2 max-h-[420px] overflow-auto">
-            {requests.map((r) => (
-              <li key={r.id} className="p-2 bg-white border rounded">
-                <div className="flex flex-row justify-between text-xs text-gray-500 mb-2">
-                  <div>{r.method}</div>
-                  <div className="text-[11px]">
-                    {new Date(r.timestamp).toLocaleString()}
-                  </div>
-                </div>
-
-                <div className="text-xs font-mono text-gray-700 break-all">
-                  {r.url}
-                </div>
-                {r.error && (
-                  <p className="text-xs mt-2 text-red-600">{r.error}</p>
-                )}
-                <p className="text-orange-500">
-                  Similar requests: {getSimilarRequests(r).length}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div> */}
     </div>
   );
 }

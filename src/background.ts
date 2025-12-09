@@ -1,5 +1,4 @@
-// Net Fail - Background Service Worker (TypeScript)
-// Captures failed network requests (HTTP 4xx/5xx and browser-level errors)
+import { getUrl } from "@/lib/storage";
 
 const MAX_STORED_REQUESTS = 500;
 
@@ -11,9 +10,9 @@ type TStoredFailedRequest = {
   error?: string;
   timestamp: number;
   type?: string;
-  // requestHeaders captured from onBeforeSendHeaders
+
   requestHeaders?: any[];
-  // responseHeaders captured from onHeadersReceived
+
   responseHeaders?: any[];
 };
 
@@ -89,6 +88,16 @@ chrome.webRequest.onHeadersReceived.addListener(
 // Store a failed request
 async function storeFailedRequest(requestData: TStoredFailedRequest) {
   try {
+    try {
+      const persisted = await getUrl();
+      if (
+        persisted &&
+        !requestData.url?.toLowerCase().includes(persisted.toLowerCase())
+      ) {
+        return;
+      }
+    } catch (e) {}
+
     const result = await chrome.storage.local.get("failedRequests");
     const failedRequests: TStoredFailedRequest[] = result.failedRequests || [];
     failedRequests.unshift(requestData);
