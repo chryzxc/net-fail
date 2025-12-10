@@ -1,7 +1,9 @@
+import { TRequestHeaders } from "@/background";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePersistedUrl } from "@/lib/usePersistedUrl";
+import { getReferrerFromHeaders } from "@/lib/utils";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface IFailedRequest {
@@ -12,7 +14,7 @@ interface IFailedRequest {
   error?: string;
   timestamp: number;
   type?: string;
-  requestHeaders?: Record<string, any>;
+  requestHeaders?: TRequestHeaders;
   response?: any;
 }
 
@@ -81,8 +83,13 @@ export default function App(): JSX.Element {
     >();
     requests.forEach((req) => {
       const referrer =
-        req.requestHeaders?.referrer ?? req.requestHeaders?.referer ?? "—";
+        getReferrerFromHeaders(req.requestHeaders) || "<no referrer>";
       const key = `${req.url}|${referrer}`;
+      console.log("Processing request for similarity:", {
+        key: req.url,
+        req,
+        referrer,
+      });
       const existing = map.get(key) ?? {
         url: req.url,
         referrer,
@@ -115,9 +122,18 @@ export default function App(): JSX.Element {
       (response: { failedRequests?: IFailedRequest[] }) => {
         const filteredRequests = (response?.failedRequests || [])
           .filter((req: IFailedRequest) => req && req.url)
-          .filter((req: IFailedRequest) =>
-            url ? req.url.toLowerCase().includes(url.toLowerCase()) : true
-          );
+          .filter((req: IFailedRequest) => {
+            console.log("Filtering request:", {
+              ref: getReferrerFromHeaders(req.requestHeaders)?.toLowerCase(),
+              url,
+            });
+            return url
+              ? req.url.toLowerCase().includes(url.toLowerCase()) ||
+                  getReferrerFromHeaders(req.requestHeaders)
+                    ?.toLowerCase()
+                    .includes(url.toLowerCase())
+              : false;
+          });
         console.log("Fetched failed requests:", filteredRequests);
         setRequests(filteredRequests);
         setLoading(false);
@@ -139,11 +155,11 @@ export default function App(): JSX.Element {
 
   const getSimilarRequests = useCallback(
     (request: IFailedRequest) => {
+      console.log("r.url", { request, requests });
       return requests.filter(
-        (r) =>
-          r.url === request.url &&
-          r.id !== request.id &&
-          r.url.includes(r.requestHeaders?.referrer.toString() || "")
+        (r) => r.url === request.url && r.id !== request.id
+        // &&
+        // r.url.includes(getReferrerFromHeaders(r.requestHeaders) || "")
       );
     },
     [requests]

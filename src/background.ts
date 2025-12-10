@@ -2,6 +2,8 @@ import { getUrl } from "@/lib/storage";
 
 const MAX_STORED_REQUESTS = 500;
 
+export type TRequestHeaders = Array<{ name: string; value: string }>;
+
 type TStoredFailedRequest = {
   id: string;
   url: string;
@@ -11,32 +13,33 @@ type TStoredFailedRequest = {
   timestamp: number;
   type?: string;
 
-  requestHeaders?: any[];
-
+  requestHeaders?: TRequestHeaders;
   responseHeaders?: any[];
 };
 
-type HeaderCacheEntry = {
+type THeaderCacheEntry = {
   requestHeaders?: any[];
   responseHeaders?: any[];
 };
 
-const headerCache = new Map<string, HeaderCacheEntry>();
+const headerCache = new Map<string, THeaderCacheEntry>();
 const PENDING_HEADERS_KEY = "pendingRequestHeaders";
 
-async function readPendingHeaders(): Promise<Record<string, HeaderCacheEntry>> {
+async function readPendingHeaders(): Promise<
+  Record<string, THeaderCacheEntry>
+> {
   const data = await chrome.storage.local.get(PENDING_HEADERS_KEY);
-  return (data[PENDING_HEADERS_KEY] as Record<string, HeaderCacheEntry>) || {};
+  return (data[PENDING_HEADERS_KEY] as Record<string, THeaderCacheEntry>) || {};
 }
 
-async function writePendingHeaders(pending: Record<string, HeaderCacheEntry>) {
+async function writePendingHeaders(pending: Record<string, THeaderCacheEntry>) {
   await chrome.storage.local.set({ [PENDING_HEADERS_KEY]: pending });
 }
 
 async function updatePendingHeaders(
   requestId: string,
-  patch: HeaderCacheEntry
-): Promise<HeaderCacheEntry> {
+  patch: THeaderCacheEntry
+): Promise<THeaderCacheEntry> {
   const pending = await readPendingHeaders();
   const existing = { ...(pending[requestId] || {}), ...patch };
   pending[requestId] = existing;
@@ -47,7 +50,7 @@ async function updatePendingHeaders(
 
 async function consumePendingHeaders(
   requestId: string
-): Promise<HeaderCacheEntry> {
+): Promise<THeaderCacheEntry> {
   const pending = await readPendingHeaders();
   const stored = pending[requestId];
   if (stored) {
@@ -62,10 +65,46 @@ async function consumePendingHeaders(
 // Capture outgoing request headers when available
 chrome.webRequest.onBeforeSendHeaders.addListener(
   (details: any) => {
+    try {
+      // Debug: log when headers are observed
+      console.debug(
+        "Net Fail: onBeforeSendHeaders",
+        details.requestId,
+        Array.isArray(details.requestHeaders)
+          ? details.requestHeaders.length
+          : details.requestHeaders
+      );
+    } catch (e) {}
+
     updatePendingHeaders(details.requestId, {
       requestHeaders: details.requestHeaders || [],
     }).catch((err) =>
       console.error("Net Fail: Error caching request headers:", err)
+    );
+  },
+  { urls: ["<all_urls>"] },
+  ["requestHeaders", "extraHeaders"]
+);
+
+// Some requests reliably include headers on `onSendHeaders` instead of
+// `onBeforeSendHeaders` in certain Chrome versions or edge-cases. Capture
+// them there as a fallback so we don't lose header data.
+chrome.webRequest.onSendHeaders.addListener(
+  (details: any) => {
+    try {
+      console.debug(
+        "Net Fail: onSendHeaders",
+        details.requestId,
+        Array.isArray(details.requestHeaders)
+          ? details.requestHeaders.length
+          : details.requestHeaders
+      );
+    } catch (e) {}
+
+    updatePendingHeaders(details.requestId, {
+      requestHeaders: details.requestHeaders || [],
+    }).catch((err) =>
+      console.error("Net Fail: Error caching request headers (send):", err)
     );
   },
   { urls: ["<all_urls>"] },
@@ -152,7 +191,8 @@ chrome.webRequest.onCompleted.addListener(
       });
     }
   },
-  { urls: ["<all_urls>"] }
+  { urls: ["<all_urls>"] },
+  ["responseHeaders", "requestHeaders", "extraHeaders"]
 );
 
 // Listen for network errors
