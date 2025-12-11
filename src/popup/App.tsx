@@ -297,10 +297,10 @@ export default function App(): JSX.Element {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-purple-600">Net Fail</h1>
         <div className="flex items-center gap-2">
-          <Button onClick={fetchFailedRequests} variant="outline">
+          {/* <Button onClick={fetchFailedRequests} variant="outline">
             Refresh
-          </Button>
-          <Button onClick={downloadCaptures} variant="ghost">
+          </Button> */}
+          <Button onClick={downloadCaptures} variant="outline">
             Export JSON
           </Button>
           <Button onClick={clearAll} variant="destructive">
