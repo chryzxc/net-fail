@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePersistedUrl } from "@/lib/usePersistedUrl";
-import { getReferrerFromHeaders } from "@/lib/utils";
+import { cn, getReferrerFromHeaders } from "@/lib/utils";
+import { STATUS_GROUPS } from "@/constants";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface IFailedRequest {
@@ -15,8 +16,17 @@ interface IFailedRequest {
   timestamp: number;
   type?: string;
   requestHeaders?: TRequestHeaders;
+  responseHeaders?: Array<{ name?: string; value?: string }>;
   response?: any;
 }
+
+type TStatusGroupMetric = {
+  id: string;
+  label: string;
+  description: string;
+  color: string;
+  count: number;
+};
 
 function isChromeRuntimeAvailable() {
   return (
@@ -30,6 +40,9 @@ export default function App(): JSX.Element {
   const { url, setUrl, clear } = usePersistedUrl("");
   const [requests, setRequests] = useState<IFailedRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRequest, setSelectedRequest] = useState<IFailedRequest | null>(
+    null
+  );
 
   const insights = useMemo(() => {
     const bucketMs = 15 * 60 * 1000;
@@ -73,6 +86,34 @@ export default function App(): JSX.Element {
       timeSeries,
       totalRequests: requests.length,
       maxBucketTotal,
+    };
+  }, [requests]);
+
+  const statusInsights = useMemo(() => {
+    const summary: TStatusGroupMetric[] = STATUS_GROUPS.map(
+      ({ id, label, description, color }) => ({
+        id,
+        label,
+        description,
+        color,
+        count: 0,
+      })
+    );
+
+    requests.forEach((request) => {
+      STATUS_GROUPS.forEach((group, index) => {
+        if (group.predicate(request.statusCode)) {
+          summary[index].count += 1;
+        }
+      });
+    });
+
+    const maxCount = Math.max(1, ...summary.map((group) => group.count));
+
+    return {
+      groups: summary,
+      maxCount,
+      total: requests.length,
     };
   }, [requests]);
 
@@ -165,6 +206,59 @@ export default function App(): JSX.Element {
     [requests]
   );
 
+  const downloadCaptures = useCallback(() => {
+    if (requests.length === 0) {
+      console.warn("Net Fail: no captures to download");
+      return;
+    }
+
+    if (typeof document === "undefined") return;
+
+    const payload = JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        requests,
+      },
+      null,
+      2
+    );
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "net-fail-captures.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [requests]);
+
+  const renderHeaderList = (
+    headers?: Array<{ name?: string; value?: string }> | TRequestHeaders
+  ) => {
+    if (!headers || headers.length === 0) {
+      return (
+        <p className="text-[11px] text-gray-400">Headers not captured yet.</p>
+      );
+    }
+
+    return (
+      <ul className="space-y-1 text-[11px] text-gray-600">
+        {headers.map((header, index) => (
+          <li
+            key={`${header?.name ?? "header"}-${index}`}
+            className="flex justify-between gap-4"
+          >
+            <span className="font-medium text-gray-700">
+              {header?.name || "Unnamed"}
+            </span>
+            <span className="text-right text-gray-500">
+              {header?.value || "—"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
   useEffect(() => {
     fetchFailedRequests();
 
@@ -206,6 +300,9 @@ export default function App(): JSX.Element {
           <Button onClick={fetchFailedRequests} variant="outline">
             Refresh
           </Button>
+          <Button onClick={downloadCaptures} variant="ghost">
+            Export JSON
+          </Button>
           <Button onClick={clearAll} variant="destructive">
             Clear
           </Button>
@@ -226,7 +323,7 @@ export default function App(): JSX.Element {
         />
         {url && (
           <button
-            onClick={() => setUrl("")}
+            onClick={() => clear()}
             className="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-500 hover:text-gray-700"
             aria-label="Clear URL"
           >
@@ -268,7 +365,20 @@ export default function App(): JSX.Element {
                   {requests.map((r) => (
                     <li
                       key={r.id}
-                      className="p-2 bg-white border rounded-lg shadow-sm"
+                      role="button"
+                      tabIndex={0}
+                      className={cn(
+                        "p-2 bg-white border rounded-lg shadow-sm transition",
+                        selectedRequest?.id === r.id &&
+                          "ring-2 ring-purple-400/70 border-purple-500/70"
+                      )}
+                      onClick={() => setSelectedRequest(r)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          setSelectedRequest(r);
+                          event.preventDefault();
+                        }
+                      }}
                     >
                       <div className="flex flex-row justify-between text-xs text-gray-500 mb-2">
                         <div>{r.method}</div>
@@ -289,6 +399,68 @@ export default function App(): JSX.Element {
                     </li>
                   ))}
                 </ul>
+                {selectedRequest && (
+                  <div className="mt-4 rounded-2xl border bg-white/90 p-4 shadow-lg">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold">Request detail</p>
+                        <p className="text-xs text-gray-500 truncate max-w-[320px]">
+                          {selectedRequest.url}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedRequest(null)}
+                      >
+                        Close
+                      </Button>
+                    </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div>
+                        <p className="text-[10px] uppercase text-gray-400">
+                          Request headers
+                        </p>
+                        <div className="mt-2 rounded-lg bg-gray-50 p-3">
+                          {renderHeaderList(selectedRequest.requestHeaders)}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase text-gray-400">
+                          Response headers
+                        </p>
+                        <div className="mt-2 rounded-lg bg-gray-50 p-3">
+                          {renderHeaderList(selectedRequest.responseHeaders)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-1 text-[11px] text-gray-600">
+                      <p>
+                        <span className="font-semibold text-gray-800">
+                          Status:
+                        </span>{" "}
+                        {selectedRequest.statusCode ?? "network/error"}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-gray-800">
+                          Method:
+                        </span>{" "}
+                        {selectedRequest.method || "UNKNOWN"}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-gray-800">
+                          Captured:
+                        </span>{" "}
+                        {new Date(selectedRequest.timestamp).toLocaleString()}
+                      </p>
+                      {selectedRequest.error && (
+                        <p className="text-xs text-red-600">
+                          {selectedRequest.error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -326,6 +498,59 @@ export default function App(): JSX.Element {
                           className="absolute inset-y-0 left-0 rounded-full bg-purple-500"
                           style={{ width: `${(count / maxCount) * 100}%` }}
                         />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border bg-white/90 p-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold">Status code groups</p>
+                  <p className="text-xs text-gray-500">
+                    {statusInsights.total} captures · grouped by status family
+                  </p>
+                </div>
+                <span className="text-xs text-gray-400">
+                  Max {statusInsights.maxCount}
+                </span>
+              </div>
+              <div className="mt-4 space-y-4">
+                {statusInsights.groups.map((group) => {
+                  const width = (group.count / statusInsights.maxCount) * 100;
+                  const percent = statusInsights.total
+                    ? Math.round((group.count / statusInsights.total) * 100)
+                    : 0;
+                  return (
+                    <div key={group.id} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: group.color }}
+                          />
+                          <span className="font-medium text-gray-700">
+                            {group.label}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-gray-700">
+                          {group.count}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                        <div
+                          className="h-2 rounded-full"
+                          style={{
+                            width: `${width}%`,
+                            backgroundColor: group.color,
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] uppercase text-gray-400">
+                        <span>{group.description}</span>
+                        <span>{percent}%</span>
                       </div>
                     </div>
                   );

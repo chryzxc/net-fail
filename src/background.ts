@@ -1,4 +1,4 @@
-import { getUrl } from "@/lib/storage";
+// import { getUrl } from "@/lib/storage";
 
 const MAX_STORED_REQUESTS = 500;
 
@@ -25,6 +25,46 @@ type THeaderCacheEntry = {
 const headerCache = new Map<string, THeaderCacheEntry>();
 const PENDING_HEADERS_KEY = "pendingRequestHeaders";
 
+// Keep a runtime in-memory copy of pending headers and flush to storage
+// on a short debounce. This prevents a storage.get/set on every request
+// header event which was causing reload lag.
+let pendingMap: Record<string, THeaderCacheEntry> = {};
+let pendingFlushTimer: any = null;
+const PENDING_FLUSH_DELAY = 1000; // ms
+
+async function flushPendingHeaders(): Promise<void> {
+  if (pendingFlushTimer) {
+    clearTimeout(pendingFlushTimer);
+    pendingFlushTimer = null;
+  }
+  try {
+    await chrome.storage.local.set({ [PENDING_HEADERS_KEY]: pendingMap });
+  } catch (err) {
+    console.error("Net Fail: Error flushing pending headers:", err);
+  }
+}
+
+function scheduleFlush() {
+  if (pendingFlushTimer) clearTimeout(pendingFlushTimer);
+  pendingFlushTimer = setTimeout(
+    () => flushPendingHeaders(),
+    PENDING_FLUSH_DELAY
+  );
+}
+
+// Seed in-memory pending map from storage on startup
+(async function initPendingFromStorage() {
+  try {
+    const stored = await readPendingHeaders();
+    pendingMap = stored || {};
+    for (const k of Object.keys(pendingMap)) {
+      headerCache.set(k, pendingMap[k]);
+    }
+  } catch (e) {
+    // non-fatal
+  }
+})();
+
 async function readPendingHeaders(): Promise<
   Record<string, THeaderCacheEntry>
 > {
@@ -40,24 +80,29 @@ async function updatePendingHeaders(
   requestId: string,
   patch: THeaderCacheEntry
 ): Promise<THeaderCacheEntry> {
-  const pending = await readPendingHeaders();
-  const existing = { ...(pending[requestId] || {}), ...patch };
-  pending[requestId] = existing;
+  // Update in-memory pending map and header cache, and schedule a flush.
+  const existing = { ...(pendingMap[requestId] || {}), ...patch };
+  pendingMap[requestId] = existing;
   headerCache.set(requestId, existing);
-  await writePendingHeaders(pending);
+  scheduleFlush();
   return existing;
 }
 
 async function consumePendingHeaders(
   requestId: string
 ): Promise<THeaderCacheEntry> {
+  // Ensure any in-memory changes are flushed so storage is up-to-date.
+  await flushPendingHeaders();
   const pending = await readPendingHeaders();
   const stored = pending[requestId];
   if (stored) {
     delete pending[requestId];
+    // write back trimmed pending map
     await writePendingHeaders(pending);
   }
   const cached = headerCache.get(requestId);
+  // remove runtime entries
+  delete pendingMap[requestId];
   headerCache.delete(requestId);
   return { ...(stored || {}), ...(cached || {}) };
 }
@@ -127,15 +172,15 @@ chrome.webRequest.onHeadersReceived.addListener(
 // Store a failed request
 async function storeFailedRequest(requestData: TStoredFailedRequest) {
   try {
-    try {
-      const persisted = await getUrl();
-      if (
-        persisted &&
-        !requestData.url?.toLowerCase().includes(persisted.toLowerCase())
-      ) {
-        return;
-      }
-    } catch (e) {}
+    // try {
+    //   const persisted = await getUrl();
+    //   if (
+    //     persisted &&
+    //     !requestData.url?.toLowerCase().includes(persisted.toLowerCase())
+    //   ) {
+    //     return;
+    //   }
+    // } catch (e) {}
 
     const result = await chrome.storage.local.get("failedRequests");
     const failedRequests: TStoredFailedRequest[] = result.failedRequests || [];
@@ -191,8 +236,8 @@ chrome.webRequest.onCompleted.addListener(
       });
     }
   },
-  { urls: ["<all_urls>"] },
-  ["responseHeaders", "requestHeaders", "extraHeaders"]
+  { urls: ["<all_urls>"] }
+  // ["responseHeaders", "requestHeaders", "extraHeaders"]
 );
 
 // Listen for network errors
