@@ -1,10 +1,11 @@
 import { cn } from "@/lib/utils";
+import { FailedRequest } from "@/types";
 
 interface RequestListProps {
-  requests: IFailedRequest[];
-  selectedRequest: IFailedRequest | null;
-  onSelect: (req: IFailedRequest) => void;
-  getSimilarRequests: (req: IFailedRequest) => IFailedRequest[];
+  requests: FailedRequest[];
+  selectedRequest: FailedRequest | null;
+  onSelect: (req: FailedRequest) => void;
+  getSimilarRequests: (req: FailedRequest) => FailedRequest[];
 }
 
 export function RequestList({

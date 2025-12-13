@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { IFailedRequest } from "../App";
 import { HeaderList } from "./HeaderList";
+import { FailedRequest } from "@/types";
 
 interface RequestDetailsProps {
-  request: IFailedRequest;
+  request: FailedRequest;
   onClose: () => void;
 }
 
