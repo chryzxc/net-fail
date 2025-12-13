@@ -1,24 +1,19 @@
-import { TRequestHeaders } from "@/background";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePersistedUrl } from "@/lib/usePersistedUrl";
-import { cn, getReferrerFromHeaders } from "@/lib/utils";
-import { STATUS_GROUPS } from "@/constants";
+import { getReferrerFromHeaders } from "@/lib/utils";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-interface IFailedRequest {
-  id: string;
-  url: string;
-  method?: string;
-  statusCode?: number | null;
-  error?: string;
-  timestamp: number;
-  type?: string;
-  requestHeaders?: TRequestHeaders;
-  responseHeaders?: Array<{ name?: string; value?: string }>;
-  response?: any;
-}
+import { RequestList } from "./components/RequestList";
+import { RequestDetails } from "./components/RequestDetails";
+import { FilterBar } from "./components/FilterBar";
+import { InsightsPanel } from "./components/InsightsPanel";
+import { FailedRequest, StatusGroupDefinition } from "@/types";
+import {
+  createRangePredicate,
+  isChromeRuntimeAvailable,
+  matchesNetworkFailure,
+  matchesOtherStatuses,
+} from "@/utils";
 
 type TStatusGroupMetric = {
   id: string;
@@ -28,19 +23,42 @@ type TStatusGroupMetric = {
   count: number;
 };
 
-function isChromeRuntimeAvailable() {
-  return (
-    typeof chrome !== "undefined" &&
-    (chrome as any).runtime &&
-    (chrome as any).runtime.sendMessage
-  );
-}
+export const STATUS_GROUPS: readonly StatusGroupDefinition[] = [
+  {
+    id: "client-errors",
+    label: "Client errors (4xx)",
+    description: "Requests blocked by the client or the destination",
+    color: "hsl(var(--chart-1))",
+    predicate: createRangePredicate(400, 500),
+  },
+  {
+    id: "server-errors",
+    label: "Server errors (5xx)",
+    description: "The server itself returned an error",
+    color: "hsl(var(--chart-2))",
+    predicate: createRangePredicate(500, 600),
+  },
+  {
+    id: "network-errors",
+    label: "Network failures",
+    description: "No HTTP status (network / CORS / blocked)",
+    color: "hsl(var(--chart-3))",
+    predicate: matchesNetworkFailure,
+  },
+  {
+    id: "other-errors",
+    label: "Other statuses",
+    description: "Non-standard codes or redirects",
+    color: "hsl(var(--chart-4))",
+    predicate: matchesOtherStatuses,
+  },
+];
 
 export default function App(): JSX.Element {
   const { url, setUrl, clear } = usePersistedUrl("");
-  const [requests, setRequests] = useState<IFailedRequest[]>([]);
+  const [requests, setRequests] = useState<FailedRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRequest, setSelectedRequest] = useState<IFailedRequest | null>(
+  const [selectedRequest, setSelectedRequest] = useState<FailedRequest | null>(
     null
   );
 
@@ -160,10 +178,10 @@ export default function App(): JSX.Element {
     setLoading(true);
     (chrome as any).runtime.sendMessage(
       { action: "getFailedRequests" },
-      (response: { failedRequests?: IFailedRequest[] }) => {
+      (response: { failedRequests?: FailedRequest[] }) => {
         const filteredRequests = (response?.failedRequests || [])
-          .filter((req: IFailedRequest) => req && req.url)
-          .filter((req: IFailedRequest) => {
+          .filter((req: FailedRequest) => req && req.url)
+          .filter((req: FailedRequest) => {
             console.log("Filtering request:", {
               ref: getReferrerFromHeaders(req.requestHeaders)?.toLowerCase(),
               url,
@@ -195,7 +213,7 @@ export default function App(): JSX.Element {
   };
 
   const getSimilarRequests = useCallback(
-    (request: IFailedRequest) => {
+    (request: FailedRequest) => {
       console.log("r.url", { request, requests });
       return requests.filter(
         (r) => r.url === request.url && r.id !== request.id
@@ -230,34 +248,6 @@ export default function App(): JSX.Element {
     anchor.click();
     URL.revokeObjectURL(url);
   }, [requests]);
-
-  const renderHeaderList = (
-    headers?: Array<{ name?: string; value?: string }> | TRequestHeaders
-  ) => {
-    if (!headers || headers.length === 0) {
-      return (
-        <p className="text-[11px] text-gray-400">Headers not captured yet.</p>
-      );
-    }
-
-    return (
-      <ul className="space-y-1 text-[11px] text-gray-600">
-        {headers.map((header, index) => (
-          <li
-            key={`${header?.name ?? "header"}-${index}`}
-            className="flex justify-between gap-4"
-          >
-            <span className="font-medium text-gray-700">
-              {header?.name || "Unnamed"}
-            </span>
-            <span className="text-right text-gray-500">
-              {header?.value || "—"}
-            </span>
-          </li>
-        ))}
-      </ul>
-    );
-  };
 
   useEffect(() => {
     fetchFailedRequests();
@@ -297,9 +287,6 @@ export default function App(): JSX.Element {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-purple-600">Net Fail</h1>
         <div className="flex items-center gap-2">
-          {/* <Button onClick={fetchFailedRequests} variant="outline">
-            Refresh
-          </Button> */}
           <Button onClick={downloadCaptures} variant="outline">
             Export JSON
           </Button>
@@ -308,43 +295,10 @@ export default function App(): JSX.Element {
           </Button>
         </div>
       </div>
-
       <p className="mt-2 text-gray-600 text-sm">
         Shows failed HTTP/network requests captured by the background worker.
       </p>
-
-      <div className="relative mt-4">
-        <Input
-          value={url}
-          onChange={(e) => setUrl((e.target as HTMLInputElement).value)}
-          placeholder="Target URL"
-          aria-label="Target URL"
-          className="w-full pr-10"
-        />
-        {url && (
-          <button
-            onClick={() => clear()}
-            className="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-500 hover:text-gray-700"
-            aria-label="Clear URL"
-          >
-            <svg
-              className="h-4 w-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        )}
-      </div>
-
+      <FilterBar url={url} setUrl={setUrl} clear={clear} />
       <Tabs defaultValue="requests" className="mt-2 w-full">
         <TabsList className="grid w-full grid-cols-2 rounded-lg border bg-white p-1">
           <TabsTrigger value="requests">Requests</TabsTrigger>
@@ -354,280 +308,30 @@ export default function App(): JSX.Element {
           <div className="mt-4">
             {loading ? (
               <div className="text-sm text-gray-500">Loading…</div>
-            ) : requests.length === 0 ? (
-              <div className="text-sm text-gray-500">
-                No failed requests captured
-              </div>
             ) : (
               <div>
-                <div className="mt-3"></div>
-                <ul className="space-y-2 max-h-[320px] overflow-auto pr-2 mt-4">
-                  {requests.map((r) => (
-                    <li
-                      key={r.id}
-                      role="button"
-                      tabIndex={0}
-                      className={cn(
-                        "p-2 bg-white border rounded-lg shadow-sm transition",
-                        selectedRequest?.id === r.id &&
-                          "ring-2 ring-purple-400/70 border-purple-500/70"
-                      )}
-                      onClick={() => setSelectedRequest(r)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          setSelectedRequest(r);
-                          event.preventDefault();
-                        }
-                      }}
-                    >
-                      <div className="flex flex-row justify-between text-xs text-gray-500 mb-2">
-                        <div>{r.method}</div>
-                        <div className="text-[11px]">
-                          {new Date(r.timestamp).toLocaleString()}
-                        </div>
-                      </div>
-
-                      <div className="text-xs font-mono text-gray-700 break-all">
-                        {r.url}
-                      </div>
-                      {r.error && (
-                        <p className="text-xs mt-2 text-red-600">{r.error}</p>
-                      )}
-                      <p className="text-orange-500">
-                        Similar requests: {getSimilarRequests(r).length}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+                <RequestList
+                  requests={requests}
+                  selectedRequest={selectedRequest}
+                  onSelect={setSelectedRequest}
+                  getSimilarRequests={getSimilarRequests}
+                />
                 {selectedRequest && (
-                  <div className="mt-4 rounded-2xl border bg-white/90 p-4 shadow-lg">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold">Request detail</p>
-                        <p className="text-xs text-gray-500 truncate max-w-[320px]">
-                          {selectedRequest.url}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedRequest(null)}
-                      >
-                        Close
-                      </Button>
-                    </div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                      <div>
-                        <p className="text-[10px] uppercase text-gray-400">
-                          Request headers
-                        </p>
-                        <div className="mt-2 rounded-lg bg-gray-50 p-3">
-                          {renderHeaderList(selectedRequest.requestHeaders)}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase text-gray-400">
-                          Response headers
-                        </p>
-                        <div className="mt-2 rounded-lg bg-gray-50 p-3">
-                          {renderHeaderList(selectedRequest.responseHeaders)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-1 text-[11px] text-gray-600">
-                      <p>
-                        <span className="font-semibold text-gray-800">
-                          Status:
-                        </span>{" "}
-                        {selectedRequest.statusCode ?? "network/error"}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-800">
-                          Method:
-                        </span>{" "}
-                        {selectedRequest.method || "UNKNOWN"}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-800">
-                          Captured:
-                        </span>{" "}
-                        {new Date(selectedRequest.timestamp).toLocaleString()}
-                      </p>
-                      {selectedRequest.error && (
-                        <p className="text-xs text-red-600">
-                          {selectedRequest.error}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  <RequestDetails
+                    request={selectedRequest}
+                    onClose={() => setSelectedRequest(null)}
+                  />
                 )}
               </div>
             )}
           </div>
         </TabsContent>
         <TabsContent value="insights">
-          <div className="mt-6 space-y-4">
-            <div className="rounded-2xl border bg-white/80 p-4 shadow-lg backdrop-blur">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold">Top failed URLs</p>
-                  <p className="text-xs text-gray-500">
-                    {insights.totalRequests} captures · grouped by URL
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 space-y-3">
-                {insights.topUrls.map(([label, count]) => {
-                  const maxCount = insights.topUrls[0]?.[1] || 1;
-                  return (
-                    <div>
-                      <div
-                        key={label}
-                        className="flex justify-between mb-1 gap-12"
-                      >
-                        <span className="text-xs font-medium text-gray-600 truncate">
-                          {label}
-                        </span>
-
-                        <span className="text-xs font-semibold text-gray-700">
-                          {count}
-                        </span>
-                      </div>
-                      <div className="relative flex-1 h-2 rounded-full bg-gray-100">
-                        <div
-                          className="absolute inset-y-0 left-0 rounded-full bg-purple-500"
-                          style={{ width: `${(count / maxCount) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border bg-white/90 p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold">Status code groups</p>
-                  <p className="text-xs text-gray-500">
-                    {statusInsights.total} captures · grouped by status family
-                  </p>
-                </div>
-                <span className="text-xs text-gray-400">
-                  Max {statusInsights.maxCount}
-                </span>
-              </div>
-              <div className="mt-4 space-y-4">
-                {statusInsights.groups.map((group) => {
-                  const width = (group.count / statusInsights.maxCount) * 100;
-                  const percent = statusInsights.total
-                    ? Math.round((group.count / statusInsights.total) * 100)
-                    : 0;
-                  return (
-                    <div key={group.id} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: group.color }}
-                          />
-                          <span className="font-medium text-gray-700">
-                            {group.label}
-                          </span>
-                        </div>
-                        <span className="font-semibold text-gray-700">
-                          {group.count}
-                        </span>
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                        <div
-                          className="h-2 rounded-full"
-                          style={{
-                            width: `${width}%`,
-                            backgroundColor: group.color,
-                          }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] uppercase text-gray-400">
-                        <span>{group.description}</span>
-                        <span>{percent}%</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border bg-white/90 p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold">
-                  Time distribution (last 8 buckets)
-                </p>
-                <span className="text-xs text-gray-400">
-                  {insights.timeSeries.length} buckets
-                </span>
-              </div>
-              <div className="mt-4 grid grid-cols-4 gap-3">
-                {insights.timeSeries.map((point) => (
-                  <div
-                    key={point.bucket}
-                    className="flex flex-col items-center gap-1"
-                  >
-                    <div className="relative h-24 w-full overflow-hidden rounded-xl bg-gray-100">
-                      <div
-                        className="absolute inset-x-2 bottom-0 rounded-xl bg-indigo-500"
-                        style={{
-                          height: `${
-                            (point.total / insights.maxBucketTotal) * 100
-                          }%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-[11px] uppercase text-gray-500">
-                      {new Date(point.bucket).toLocaleTimeString([], {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                    <span className="text-xs font-semibold text-gray-700">
-                      {point.total}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border bg-white/90 p-4 shadow-lg">
-              <p className="text-sm font-semibold">Similarity clusters</p>
-              <p className="text-xs text-gray-500">Grouped by URL + referrer</p>
-              <div className="mt-3 space-y-3">
-                {similarityGroups.length === 0 ? (
-                  <p className="text-xs text-gray-400">
-                    No similar captures yet.
-                  </p>
-                ) : (
-                  similarityGroups.map((group) => (
-                    <div
-                      key={`${group.url}-${group.referrer}`}
-                      className="flex items-center justify-between gap-3"
-                    >
-                      <div className="min-w-0 text-[11px]">
-                        <p className="truncate font-medium text-gray-700">
-                          {group.url}
-                        </p>
-                        <p className="truncate text-gray-400">
-                          Referrer: {group.referrer}
-                        </p>
-                      </div>
-                      <span className="text-sm font-semibold text-purple-600">
-                        {group.count}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          <InsightsPanel
+            insights={insights}
+            statusInsights={statusInsights}
+            similarityGroups={similarityGroups}
+          />
         </TabsContent>
       </Tabs>
     </div>

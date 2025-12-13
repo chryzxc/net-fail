@@ -1,8 +1,6 @@
 // import { getUrl } from "@/lib/storage";
-
-const MAX_STORED_REQUESTS = 500;
-
-export type TRequestHeaders = Array<{ name: string; value: string }>;
+import { MAX_STORED_REQUESTS } from "./constants";
+import { RequestHeaders } from "./types";
 
 type TStoredFailedRequest = {
   id: string;
@@ -13,7 +11,7 @@ type TStoredFailedRequest = {
   timestamp: number;
   type?: string;
 
-  requestHeaders?: TRequestHeaders;
+  requestHeaders?: RequestHeaders;
   responseHeaders?: any[];
 };
 
