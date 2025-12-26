@@ -12,6 +12,18 @@ A modern Chrome/Edge Manifest V3 browser extension that captures, analyzes, and 
 - 💾 **Export Options** — Export captured data as JSON or CSV
 - 🔗 **Similarity Detection** — Groups similar requests by URL and referrer patterns
 - ⚡ **Real-time Updates** — Live badge count and automatic UI refresh
+  A modern Chrome/Edge Manifest V3 browser extension that captures, analyzes, and displays failed network requests with detailed insights.
+
+## Features
+
+- 🔍 **Request Capture** — Automatically captures HTTP 4xx/5xx errors and network failures
+- 📊 **Visual Insights** — Charts and analytics for error distribution, top failing URLs, and time-based patterns
+- 🌙 **Dark Mode** — Full dark/light theme support with system preference detection
+- 🔎 **Smart Filtering** — Filter by URL, referrer, or any request attribute
+- 📋 **Header Inspection** — View request and response headers with search and copy functionality
+- 💾 **Export Options** — Export captured data as JSON or CSV
+- 🔗 **Similarity Detection** — Groups similar requests by URL and referrer patterns
+- ⚡ **Real-time Updates** — Live badge count and automatic UI refresh
 
 ## Tech Stack
 
@@ -57,10 +69,15 @@ net-fail/
 
 ```bash
 # Install dependencies
+# Install dependencies
 npm install
 
 # Build for production
+# Build for production
 npm run build
+
+# Type checking
+npm run typecheck
 
 # Type checking
 npm run typecheck
@@ -68,9 +85,29 @@ npm run typecheck
 
 ## Load Extension
 
+## Load Extension
+
 1. Go to `chrome://extensions` (or `edge://extensions`)
 2. Enable **Developer mode**
 3. Click **Load unpacked** → select the `dist` folder
+
+## Development
+
+```bash
+# Development build with watch
+npm run dev
+
+# Production build
+npm run build
+```
+
+## Security Features
+
+- Content Security Policy (CSP) compliant
+- Input sanitization for URL filters
+- No eval or inline scripts
+- Minimal permissions (webRequest, storage only)
+- Safe URL scheme validation
 
 ## Development
 
