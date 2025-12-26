@@ -3,14 +3,19 @@
   "name": "Net Fail",
   "author": "Christian Rey Villablanca",
   "version": "1.0.0",
-  "description": "Captures, stores, and displays failed network requests",
-  "permissions": ["webRequest", "storage", "tabs"],
+  "description": "Captures, analyzes, and displays failed network requests with detailed insights",
+  "permissions": ["webRequest", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "assets/background.js",
+    "type": "module"
   },
   "action": {
     "default_popup": "src/popup/index.html",
     "default_title": "Net Fail - Failed Requests"
+  },
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 }
