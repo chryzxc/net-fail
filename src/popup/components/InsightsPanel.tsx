@@ -86,8 +86,10 @@ const TopUrlsCard = memo(function TopUrlsCard({
             <TrendingUp className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-sm">Top Failed URLs</CardTitle>
-            <CardDescription>{totalRequests} total captures</CardDescription>
+            <CardTitle className="text-base">Top Failed URLs</CardTitle>
+            <CardDescription className="text-sm">
+              {totalRequests} total captures
+            </CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -100,14 +102,14 @@ const TopUrlsCard = memo(function TopUrlsCard({
               <div key={url} className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <Tooltip content={url}>
-                    <span className="text-xs font-medium text-foreground truncate max-w-[200px] flex items-center gap-1">
-                      <span className="text-muted-foreground text-[10px] w-4">
+                    <span className="text-sm font-medium text-foreground truncate max-w-[200px] flex items-center gap-1">
+                      <span className="text-muted-foreground text-xs w-5">
                         #{idx + 1}
                       </span>
                       {truncateUrl(url, 40)}
                     </span>
                   </Tooltip>
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge variant="secondary" className="text-xs">
                     {count}
                   </Badge>
                 </div>
@@ -137,8 +139,10 @@ const StatusGroupsCard = memo(function StatusGroupsCard({
             <AlertTriangle className="h-4 w-4 text-amber-500" />
           </div>
           <div>
-            <CardTitle className="text-sm">Error Distribution</CardTitle>
-            <CardDescription>Grouped by status code family</CardDescription>
+            <CardTitle className="text-base">Error Distribution</CardTitle>
+            <CardDescription className="text-sm">
+              Grouped by status code family
+            </CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -158,13 +162,13 @@ const StatusGroupsCard = memo(function StatusGroupsCard({
                       className="h-2.5 w-2.5 rounded-full flex-shrink-0"
                       style={{ backgroundColor: group.color }}
                     />
-                    <span className="text-xs font-medium text-foreground">
+                    <span className="text-sm font-medium text-foreground">
                       {group.label}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold">{group.count}</span>
-                    <span className="text-[10px] text-muted-foreground w-8 text-right">
+                    <span className="text-sm font-semibold">{group.count}</span>
+                    <span className="text-xs text-muted-foreground w-10 text-right">
                       {percent}%
                     </span>
                   </div>
@@ -175,7 +179,7 @@ const StatusGroupsCard = memo(function StatusGroupsCard({
                   color={group.color}
                   className="h-1.5"
                 />
-                <p className="text-[10px] text-muted-foreground pl-4">
+                <p className="text-xs text-muted-foreground pl-4">
                   {group.description}
                 </p>
               </div>
@@ -206,8 +210,8 @@ const TimeDistributionCard = memo(function TimeDistributionCard({
               <Clock className="h-4 w-4 text-indigo-500" />
             </div>
             <div>
-              <CardTitle className="text-sm">Timeline</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base">Timeline</CardTitle>
+              <CardDescription className="text-sm">
                 Last {timeSeries.length} intervals
               </CardDescription>
             </div>
@@ -228,8 +232,10 @@ const TimeDistributionCard = memo(function TimeDistributionCard({
                   key={point.bucket}
                   content={
                     <div className="text-center">
-                      <p className="font-medium">{point.total} errors</p>
-                      <p className="text-[10px] opacity-75">
+                      <p className="font-medium text-sm">
+                        {point.total} errors
+                      </p>
+                      <p className="text-xs opacity-75">
                         {new Date(point.bucket).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -245,7 +251,7 @@ const TimeDistributionCard = memo(function TimeDistributionCard({
                         style={{ height: `${Math.max(height, 4)}%` }}
                       />
                     </div>
-                    <span className="text-[9px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground">
                       {new Date(point.bucket).toLocaleTimeString([], {
                         hour: "numeric",
                         minute: "2-digit",
@@ -278,8 +284,10 @@ const SimilarityClustersCard = memo(function SimilarityClustersCard({
             <Layers className="h-4 w-4 text-emerald-500" />
           </div>
           <div>
-            <CardTitle className="text-sm">Similar Patterns</CardTitle>
-            <CardDescription>Grouped by URL + referrer</CardDescription>
+            <CardTitle className="text-base">Similar Patterns</CardTitle>
+            <CardDescription className="text-sm">
+              Grouped by URL + referrer
+            </CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -298,12 +306,12 @@ const SimilarityClustersCard = memo(function SimilarityClustersCard({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <Tooltip content={group.url}>
-                      <p className="text-xs font-medium text-foreground truncate flex items-center gap-1">
-                        <ExternalLink className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                      <p className="text-sm font-medium text-foreground truncate flex items-center gap-1">
+                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                         {truncateUrl(group.url, 35)}
                       </p>
                     </Tooltip>
-                    <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
                       From:{" "}
                       {group.referrer === "<no referrer>"
                         ? "Direct"
@@ -313,7 +321,7 @@ const SimilarityClustersCard = memo(function SimilarityClustersCard({
                   <Badge
                     variant="secondary"
                     className={cn(
-                      "text-[10px] font-semibold flex-shrink-0",
+                      "text-xs font-semibold flex-shrink-0",
                       group.count >= 10 &&
                         "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                     )}
@@ -358,7 +366,7 @@ export function InsightsPanel({
             <p className="text-lg font-bold text-primary">
               {insights.totalRequests}
             </p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">
               Total
             </p>
           </div>
@@ -367,7 +375,7 @@ export function InsightsPanel({
               {statusInsights.groups.find((g) => g.id === "client-errors")
                 ?.count ?? 0}
             </p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">
               4xx
             </p>
           </div>
@@ -376,7 +384,7 @@ export function InsightsPanel({
               {statusInsights.groups.find((g) => g.id === "server-errors")
                 ?.count ?? 0}
             </p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">
               5xx
             </p>
           </div>

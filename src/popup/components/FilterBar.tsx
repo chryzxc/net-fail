@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { Search, X, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,19 +22,31 @@ export function FilterBar({
   isLoading,
 }: FilterBarProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [inputValue, setInputValue] = useState(url);
+
+  // Debounce the URL filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setUrl(inputValue);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [inputValue, setUrl]);
+
+  // Sync inputValue with external url changes
+  useEffect(() => {
+    setInputValue(url);
+  }, [url]);
 
   const handleClear = useCallback(() => {
     clear();
   }, [clear]);
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      // Sanitize input - remove potentially harmful characters
-      const value = e.target.value.replace(/[<>]/g, "");
-      setUrl(value);
-    },
-    [setUrl]
-  );
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    // Sanitize input - remove potentially harmful characters
+    const value = e.target.value.replace(/[<>]/g, "");
+    setInputValue(value);
+  }, []);
 
   return (
     <div className="relative mt-4">
@@ -58,7 +70,7 @@ export function FilterBar({
 
         {/* Input field */}
         <Input
-          value={url}
+          value={inputValue}
           onChange={handleChange}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
@@ -89,8 +101,8 @@ export function FilterBar({
 
       {/* Filter hint */}
       {url && (
-        <p className="mt-1.5 text-[11px] text-muted-foreground animate-appear">
-          <Filter className="inline h-3 w-3 mr-1" />
+        <p className="mt-1.5 text-xs text-muted-foreground animate-appear">
+          <Filter className="inline h-3.5 w-3.5 mr-1" />
           Showing requests matching "{url}"
         </p>
       )}

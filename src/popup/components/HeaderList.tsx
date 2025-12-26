@@ -42,7 +42,7 @@ export function HeaderList({
   // Empty state
   if (!headers || headers.length === 0) {
     return (
-      <p className="text-[11px] text-muted-foreground italic">
+      <p className="text-sm text-muted-foreground italic">
         No headers captured
       </p>
     );
@@ -53,13 +53,13 @@ export function HeaderList({
       {/* Search input */}
       {searchable && headers.length > 3 && (
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search headers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-7 pl-7 text-[11px] bg-background"
+            className="h-8 pl-8 text-sm bg-background"
           />
         </div>
       )}
@@ -67,7 +67,7 @@ export function HeaderList({
       {/* Headers list */}
       <ul className="space-y-0.5 max-h-[200px] overflow-auto scrollbar-thin">
         {filteredHeaders.length === 0 ? (
-          <li className="text-[11px] text-muted-foreground italic py-2">
+          <li className="text-sm text-muted-foreground italic py-2">
             No matching headers
           </li>
         ) : (
@@ -79,12 +79,12 @@ export function HeaderList({
                 copiedIndex === index && "bg-green-50 dark:bg-green-900/20"
               )}
             >
-              <span className="font-medium text-[11px] text-foreground break-all">
+              <span className="font-medium text-sm text-foreground break-all">
                 {header.name ?? "Unnamed"}
               </span>
               <div className="flex items-center gap-1 min-w-0">
                 <span
-                  className="text-[11px] text-muted-foreground text-right truncate max-w-[180px]"
+                  className="text-sm text-muted-foreground text-right truncate max-w-[180px]"
                   title={header.value}
                 >
                   {header.value ?? "—"}
@@ -93,14 +93,14 @@ export function HeaderList({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                     onClick={() => handleCopy(header.value!, index)}
                     aria-label={`Copy ${header.name} value`}
                   >
                     {copiedIndex === index ? (
-                      <Check className="h-2.5 w-2.5 text-green-500" />
+                      <Check className="h-3 w-3 text-green-500" />
                     ) : (
-                      <Copy className="h-2.5 w-2.5" />
+                      <Copy className="h-3 w-3" />
                     )}
                   </Button>
                 )}
@@ -112,7 +112,7 @@ export function HeaderList({
 
       {/* Header count */}
       {headers.length > 0 && (
-        <p className="text-[10px] text-muted-foreground pt-1 border-t border-border/50">
+        <p className="text-xs text-muted-foreground pt-1 border-t border-border/50">
           {filteredHeaders.length === headers.length
             ? `${headers.length} header${headers.length !== 1 ? "s" : ""}`
             : `${filteredHeaders.length} of ${headers.length} headers`}

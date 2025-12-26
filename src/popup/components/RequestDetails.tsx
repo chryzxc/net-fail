@@ -66,9 +66,9 @@ function CollapsibleSection({
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           )}
           <span className="text-muted-foreground">{icon}</span>
-          <span className="text-xs font-medium text-foreground">{title}</span>
+          <span className="text-sm font-medium text-foreground">{title}</span>
           {count !== undefined && (
-            <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">
+            <Badge variant="secondary" className="ml-1 text-xs px-2 py-0.5">
               {count}
             </Badge>
           )}
@@ -112,7 +112,7 @@ export function RequestDetails({ request, onClose }: RequestDetailsProps) {
   }
 
   return (
-    <Card className="mt-4 animate-slide-in overflow-hidden">
+    <Card className="mt-4 animate-slide-in  h-full w-full">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           {/* Request summary */}
@@ -125,7 +125,7 @@ export function RequestDetails({ request, onClose }: RequestDetailsProps) {
                 {request.statusCode ?? "Network Error"}
               </StatusIndicator>
               {resourceType && (
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-xs">
                   {resourceType}
                 </Badge>
               )}
@@ -134,10 +134,10 @@ export function RequestDetails({ request, onClose }: RequestDetailsProps) {
             {/* URL with copy button */}
             <div className="flex items-start gap-2 group">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
+                <p className="text-base font-medium text-foreground truncate">
                   {hostname}
                 </p>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                <p className="text-sm text-muted-foreground truncate mt-0.5">
                   {pathname}
                 </p>
               </div>
@@ -174,7 +174,7 @@ export function RequestDetails({ request, onClose }: RequestDetailsProps) {
         {/* Error message */}
         {request.error && (
           <div className="mt-3 p-2.5 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800/50">
-            <p className="text-xs text-red-700 dark:text-red-400">
+            <p className="text-sm text-red-700 dark:text-red-400">
               {request.error}
             </p>
           </div>
@@ -184,10 +184,10 @@ export function RequestDetails({ request, onClose }: RequestDetailsProps) {
       <CardContent className="pt-0">
         <ScrollArea maxHeight={300}>
           {/* Metadata section */}
-          <div className="space-y-2 mb-4 text-xs">
+          <div className="space-y-2 mb-4 text-sm">
             <div className="flex items-center justify-between py-1.5 px-2 rounded-md bg-muted/30">
               <span className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="h-3 w-3" />
+                <Clock className="h-3.5 w-3.5" />
                 Captured
               </span>
               <span className="font-medium">
@@ -201,7 +201,7 @@ export function RequestDetails({ request, onClose }: RequestDetailsProps) {
             {request.initiator && (
               <div className="flex items-center justify-between py-1.5 px-2 rounded-md bg-muted/30">
                 <span className="flex items-center gap-2 text-muted-foreground">
-                  <Globe className="h-3 w-3" />
+                  <Globe className="h-3.5 w-3.5" />
                   Initiator
                 </span>
                 <span className="font-medium truncate max-w-[200px]">

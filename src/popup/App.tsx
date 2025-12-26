@@ -332,155 +332,164 @@ export default function App(): JSX.Element {
   }, [url, fetchFailedRequests]);
 
   return (
-    <div className="w-[540px] min-h-[480px] bg-background p-4 flex flex-col ">
-      {/* Header */}
-      <header className="flex items-center justify-between gap-4 pt-4">
-        <div className="flex items-center gap-3">
-          {/* Logo */}
-          <div className="relative">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
-              {requests.length > 0 ? (
-                <WifiOff className="h-5 w-5 text-primary-foreground" />
-              ) : (
-                <Wifi className="h-5 w-5 text-primary-foreground" />
-              )}
+    <div className="w-screen min-w-[600px] h-full bg-background p-4 flex flex-col overflow-hidden">
+      <div className="flex flex-row gap-8 w-full h-full py-6 overflow-hidden">
+        <div className="w-full">
+          {/* Header */}
+          <header className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {/* Logo */}
+              <div className="relative">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
+                  {requests.length > 0 ? (
+                    <WifiOff className="h-5 w-5 text-primary-foreground" />
+                  ) : (
+                    <Wifi className="h-5 w-5 text-primary-foreground" />
+                  )}
+                </div>
+                {requests.length > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 text-xs flex items-center justify-center"
+                  >
+                    {requests.length > 99 ? "99+" : requests.length}
+                  </Badge>
+                )}
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-foreground">Net Fail</h1>
+                <p className="text-sm text-muted-foreground">
+                  Failed request monitor
+                </p>
+              </div>
             </div>
-            {requests.length > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
-              >
-                {requests.length > 99 ? "99+" : requests.length}
-              </Badge>
-            )}
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-foreground">Net Fail</h1>
-            <p className="text-[11px] text-muted-foreground">
-              Failed request monitor
-            </p>
-          </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1">
-          <Tooltip content={isRefreshing ? "Refreshing..." : "Refresh"}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleRefresh}
-              disabled={loading || isRefreshing}
-              className="h-8 w-8"
-              aria-label="Refresh requests"
-            >
-              <RefreshCw
-                className={cn("h-4 w-4", isRefreshing && "animate-spin")}
-              />
-            </Button>
-          </Tooltip>
+            {/* Actions */}
+            <div className="flex items-center gap-1">
+              <Tooltip content={isRefreshing ? "Refreshing..." : "Refresh"}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRefresh}
+                  disabled={loading || isRefreshing}
+                  className="h-8 w-8"
+                  aria-label="Refresh requests"
+                >
+                  <RefreshCw
+                    className={cn("h-4 w-4", isRefreshing && "animate-spin")}
+                  />
+                </Button>
+              </Tooltip>
 
-          <Tooltip content={isDark ? "Light mode" : "Dark mode"}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="h-8 w-8"
-              aria-label="Toggle theme"
-            >
-              {isDark ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </Button>
-          </Tooltip>
+              <Tooltip content={isDark ? "Light mode" : "Dark mode"}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleTheme}
+                  className="h-8 w-8"
+                  aria-label="Toggle theme"
+                >
+                  {isDark ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                </Button>
+              </Tooltip>
 
-          <div className="w-px h-5 bg-border mx-1" />
+              <div className="w-px h-5 bg-border mx-1" />
 
-          <Tooltip content="Export as JSON">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => downloadCaptures("json")}
-              disabled={requests.length === 0}
-              className="h-8 w-8"
-              aria-label="Export captures"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          </Tooltip>
+              <Tooltip content="Export as JSON">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => downloadCaptures("json")}
+                  disabled={requests.length === 0}
+                  className="h-8 w-8"
+                  aria-label="Export captures"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </Tooltip>
 
-          <Tooltip content="Clear all">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={clearAll}
-              disabled={requests.length === 0}
-              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-              aria-label="Clear all requests"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </Tooltip>
-        </div>
-      </header>
+              <Tooltip content="Clear all">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearAll}
+                  disabled={requests.length === 0}
+                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  aria-label="Clear all requests"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+            </div>
+          </header>
 
-      {/* Filter bar */}
-      <FilterBar url={url} setUrl={setUrl} clear={clear} isLoading={loading} />
-
-      {/* Main content */}
-      <Tabs defaultValue="requests" className="mt-4 flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-2 h-9">
-          <TabsTrigger value="requests" className="gap-1.5">
-            Requests
-            {requests.length > 0 && (
-              <Badge
-                variant="secondary"
-                className="ml-1 text-[10px] px-1.5 py-0"
-              >
-                {requests.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="insights">Insights</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="requests" className="flex-1 mt-0">
-          <RequestList
-            requests={requests}
-            selectedRequest={selectedRequest}
-            onSelect={setSelectedRequest}
-            getSimilarRequests={getSimilarRequests}
+          {/* Filter bar */}
+          <FilterBar
+            url={url}
+            setUrl={setUrl}
+            clear={clear}
             isLoading={loading}
           />
 
-          {selectedRequest && (
+          {/* Main content */}
+          <Tabs defaultValue="requests" className="mt-4 flex-1 flex flex-col">
+            <TabsList className="grid w-full grid-cols-2 h-9">
+              <TabsTrigger value="requests" className="gap-1.5">
+                Requests
+                {requests.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 text-xs px-2 py-0.5"
+                  >
+                    {requests.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="insights">Insights</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="requests" className="flex-1 mt-0">
+              <RequestList
+                requests={requests}
+                selectedRequest={selectedRequest}
+                onSelect={setSelectedRequest}
+                getSimilarRequests={getSimilarRequests}
+                isLoading={loading}
+              />
+            </TabsContent>
+
+            <TabsContent value="insights" className="flex-1 mt-0">
+              <InsightsPanel
+                insights={insights}
+                statusInsights={statusInsights}
+                similarityGroups={similarityGroups}
+                isLoading={loading}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+        {selectedRequest && (
+          <div className="flex h-full w-full justify-center ">
             <RequestDetails
               request={selectedRequest}
               onClose={() => setSelectedRequest(null)}
             />
-          )}
-        </TabsContent>
-
-        <TabsContent value="insights" className="flex-1 mt-0">
-          <InsightsPanel
-            insights={insights}
-            statusInsights={statusInsights}
-            similarityGroups={similarityGroups}
-            isLoading={loading}
-          />
-        </TabsContent>
-      </Tabs>
-
+          </div>
+        )}
+      </div>
       {/* Footer */}
-      <footer className="mt-4 pt-3 border-t text-center">
-        <p className="text-[10px] text-muted-foreground">
+      <div className="mt-4 pt-3 border-t text-center">
+        <p className="text-xs text-muted-foreground">
           Capturing failed requests (4xx, 5xx, network errors)
         </p>
-        <p className="text-[9px] text-muted-foreground mt-2">
+        <p className="text-[11px] text-muted-foreground mt-2">
           Created by Christian Rey Villablanca
         </p>
-      </footer>
+      </div>
     </div>
   );
 }
